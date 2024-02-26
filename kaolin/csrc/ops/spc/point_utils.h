@@ -35,5 +35,7 @@ at::Tensor coords_to_trilinear_jacobian_cuda(at::Tensor coords);
 
 at::Tensor points_to_corners_cuda(at::Tensor points);
 
+at::Tensor points_to_neighbors_cuda(at::Tensor points);
+
 } // namespace kaolin
 

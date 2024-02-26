@@ -25,6 +25,7 @@ namespace kaolin {
 void morton_to_points_cuda_impl(at::Tensor morton_codes, at::Tensor points);
 void points_to_morton_cuda_impl(at::Tensor points, at::Tensor morton_codes);
 void points_to_corners_cuda_impl(at::Tensor points, at::Tensor corners);
+void points_to_neighbors_cuda_impl(at::Tensor points, at::Tensor corners);
 void interpolate_trilinear_cuda_impl(at::Tensor coords, at::Tensor pidx,
                                      at::Tensor points, at::Tensor trinkets,
                                      at::Tensor feats_in, at::Tensor feats_out, int32_t level);
@@ -76,6 +77,22 @@ at::Tensor points_to_corners_cuda(at::Tensor points) {
   at::Tensor corners = at::zeros({num, 8, 3}, at::device(at::kCUDA).dtype(at::kShort));
   points_to_corners_cuda_impl(points, corners);
   return corners;
+#else
+  KAOLIN_NO_CUDA_ERROR(__func__);
+#endif  // WITH_CUDA
+}
+
+at::Tensor points_to_neighbors_cuda(at::Tensor points) {
+#ifdef WITH_CUDA
+  at::TensorArg points_arg{points, "points", 1};
+  at::checkAllSameGPU(__func__, {points_arg});
+  at::checkAllContiguous(__func__, {points_arg});
+  at::checkScalarType(__func__, points_arg, at::kShort);
+  
+  int64_t num = points.size(0);
+  at::Tensor neighbors = at::zeros({num, 27, 3}, at::device(at::kCUDA).dtype(at::kShort));
+  points_to_neighbors_cuda_impl(points, neighbors);
+  return neighbors;
 #else
   KAOLIN_NO_CUDA_ERROR(__func__);
 #endif  // WITH_CUDA
