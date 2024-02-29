@@ -60,6 +60,26 @@ __global__ void points_to_neighbors_cuda_kernel(
     }
 }
 
+
+__global__ void points_to_125neighbors_cuda_kernel(
+    const point_data* point,
+    point_data* neighbors,
+    const int64_t num_points
+){
+    int64_t idx = blockIdx.x*blockDim.x + threadIdx.x;
+    int64_t stride = blockDim.x*gridDim.x;
+    if (idx > num_points) return;
+
+    for (int64_t i=idx; i<num_points; i+=stride) { 
+#       pragma unroll
+        for (int j=0; j<125; ++j) {
+            neighbors[i*125 + j].x = point[i].x + ((j / 25) - 2);
+            neighbors[i*125 + j].y = point[i].y + (((j % 25) / 5) - 2);
+            neighbors[i*125 + j].z = point[i].z + ((j % 5) - 2);
+        }
+    }
+}
+
 template<typename scalar_t>
 __global__ void interpolate_trilinear_cuda_kernel(
     const float3* coords, // num_voxels, num_samples, 3
@@ -295,5 +315,16 @@ void points_to_neighbors_cuda_impl(
     );
 }
 
+void points_to_125neighbors_cuda_impl(
+    at::Tensor points,
+    at::Tensor neighbors
+) {
+    int64_t num_points = points.size(0);
+    points_to_125neighbors_cuda_kernel<<<(num_points + 1023) / 1024, 1024>>>(
+        reinterpret_cast<point_data*>(points.data_ptr<short>()),
+        reinterpret_cast<point_data*>(neighbors.data_ptr<short>()),
+        num_points
+    );
+}
 } // namespace kaolin
 

@@ -37,5 +37,8 @@ at::Tensor points_to_corners_cuda(at::Tensor points);
 
 at::Tensor points_to_neighbors_cuda(at::Tensor points);
 
+at::Tensor points_to_125neighbors_cuda(at::Tensor points);
+
+
 } // namespace kaolin
 
