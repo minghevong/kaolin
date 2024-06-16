@@ -16,9 +16,9 @@
 #ifndef KAOLIN_OPS_RENDER_SPC_RAYTRACE_H_
 #define KAOLIN_OPS_RENDER_SPC_RAYTRACE_H_
 
-#ifdef WITH_CUDA
-#include "../../spc_math.h"
-#endif
+// #ifdef WITH_CUDA
+// #include "../../spc_math.h"
+// #endif
 
 #include <ATen/ATen.h>
 
