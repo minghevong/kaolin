@@ -91,7 +91,7 @@ at::Tensor points_to_neighbors_cuda(at::Tensor points) {
   at::checkScalarType(__func__, points_arg, at::kShort);
   
   int64_t num = points.size(0);
-  at::Tensor neighbors = at::zeros({num, 27, 3}, at::device(at::kCUDA).dtype(at::kShort));
+  at::Tensor neighbors = at::zeros({num, 27, 3}, at::device(at::kCUDA).dtype(at::kShort)).contiguous();
   points_to_neighbors_cuda_impl(points, neighbors);
   return neighbors;
 #else

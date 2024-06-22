@@ -29,7 +29,7 @@ __global__ void points_to_corners_cuda_kernel(
 ){
     int64_t idx = blockIdx.x*blockDim.x + threadIdx.x;
     int64_t stride = blockDim.x*gridDim.x;
-    if (idx > num_points) return;
+    if (idx >= num_points) return;
 
     for (int64_t i=idx; i<num_points; i+=stride) { 
 #       pragma unroll
@@ -48,7 +48,7 @@ __global__ void points_to_neighbors_cuda_kernel(
 ){
     int64_t idx = blockIdx.x*blockDim.x + threadIdx.x;
     int64_t stride = blockDim.x*gridDim.x;
-    if (idx > num_points) return;
+    if (idx >= num_points) return;
 
     for (int64_t i=idx; i<num_points; i+=stride) { 
 #       pragma unroll
@@ -68,7 +68,7 @@ __global__ void points_to_125neighbors_cuda_kernel(
 ){
     int64_t idx = blockIdx.x*blockDim.x + threadIdx.x;
     int64_t stride = blockDim.x*gridDim.x;
-    if (idx > num_points) return;
+    if (idx >= num_points) return;
 
     for (int64_t i=idx; i<num_points; i+=stride) { 
 #       pragma unroll
@@ -146,7 +146,7 @@ __global__ void coords_to_trilinear_cuda_kernel(
 ){
     int64_t idx = blockIdx.x*blockDim.x + threadIdx.x;
     int64_t stride = blockDim.x*gridDim.x;
-    if (idx > num_coords) return;
+    if (idx >= num_coords) return;
 
     for (int64_t i=idx; i<num_coords; i+=stride) { 
         float3 x_ = make_float3(coords[i].x - points[i].x, coords[i].y - points[i].y, coords[i].z - points[i].z);
