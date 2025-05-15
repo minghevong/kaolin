@@ -14,33 +14,31 @@ Note that Kaolin library is part of the larger [NVIDIA Kaolin effort](https://de
 Starting with v0.12.0, Kaolin supports installation with wheels:
 ```
 # Replace TORCH_VERSION and CUDA_VERSION with your torch / cuda versions
-pip install kaolin==0.15.0 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-{TORCH_VERSION}_cu{CUDA_VERSION}.html
+pip install kaolin==0.17.0 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-{TORCH_VERSION}_cu{CUDA_VERSION}.html
 ```
-For example, to install kaolin 0.15.0 over torch 1.12.1 and cuda 11.3:
+For example, to install kaolin 0.17.0 over torch 2.0.1 and cuda 11.8:
 ```
-pip install kaolin==0.15.0 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-1.12.1_cu113.html
+pip install kaolin==0.17.0 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.0.1_cu118.html
 ```
 
-## About the Latest Release (0.15.0)
+## About the Latest Release (0.17.0)
 
-In this version we added a [non commercial section](https://kaolin.readthedocs.io/en/latest/modules/kaolin.non_commercial.html) under [NSCL license](LICENSE.NSCL). See [The license section for more info](#Licenses) for more details.
+In this version we added [sample_points_in_volume](https://kaolin.readthedocs.io/en/latest/modules/kaolin.ops.gaussian.html#kaolin.ops.gaussian.sample_points_in_volume) function used for "densifying" a gaussian splats, this can be used to improve [Physics simulation](https://kaolin.readthedocs.io/en/latest/modules/physics.html).
 
-In this new section we implemented [features for Flexicubes](https://kaolin.readthedocs.io/en/latest/modules/kaolin.non_commercial.html#kaolin.non_commercial.FlexiCubes) a method to extract meshes from scalar fields. See more information in [the official repository](https://github.com/nv-tlabs/FlexiCubes) which is now using Kaolin's implementation.
+We further improved physics training and simulation using [NVIDIA Warp](https://github.com/NVIDIA/warp) on some of our functions. We also added support for transmittance in the GLTF loader.
 
-<a href="https://kaolin.readthedocs.io/en/latest/modules/kaolin.non_commercial.html#kaolin.non_commercial.FlexiCubes"><img src="./assets/flexicubes.png" alt="flexicubes" height="250" /></a>
+![](assets/no_densifier_small.gif) | ![](assets/with_densifier_small.gif)
+:---------------------------------:|:------------------------------------:
+Without Densifier                  |  With Densifier
 
-In addition we implemented a [GLTF mesh loader](https://kaolin.readthedocs.io/en/latest/modules/kaolin.io.gltf.html) that can be used to load models from [Objaverse](https://objaverse.allenai.org/objaverse-1.0) and [Objaverse-XL](https://objaverse.allenai.org/).
+Check our updated tutorials:
+* [Use Simplicit's Easy API to Simulate a Mesh](https://github.com/NVIDIAGameWorks/kaolin/blob/master/examples/tutorial/physics/simplicits_easy_api.ipynb)
+* [Interact with a Physics Simulation](https://github.com/NVIDIAGameWorks/kaolin/blob/master/examples/tutorial/physics/simplicits_interactive.ipynb)
+* [Use Simplicit's Full-Feature API](https://github.com/NVIDIAGameWorks/kaolin/blob/master/examples/tutorial/physics/simplicits_low_level_api.ipynb)
+* [Simulate a Gaussian Splat](https://gitlab-master.nvidia.com/Toronto_DL_Lab/kaolin/-/blob/master/examples/tutorial/physics/simplicits_inria_splatting.ipynb)
+* [Simulate a Muscle Activation on a Musculoskeletal Mesh](https://gitlab-master.nvidia.com/Toronto_DL_Lab/kaolin/-/blob/master/examples/tutorial/physics/simplicits_muscle_activation.ipynb)
 
-<a href="https://kaolin.readthedocs.io/en/latest/modules/kaolin.io.gltf.html"><img src="./assets/gltf.png" alt="gltf" height="250" /></a>
-
-
-Check our new tutorial:
-[**Load and render a GLTF file** interactively into a Jupyter notebook:](https://github.com/NVIDIAGameWorks/kaolin/blob/master/examples/tutorial/gltf_viz.ipynb)
-In this file we show how to load a gltf file and fully differentiably render it with [nvdiffrast](https://nvlabs.github.io/nvdiffrast/) and [spherical gaussian for diffuse and specular lighting](https://kaolin.readthedocs.io/en/latest/modules/kaolin.render.lighting.html), using displacement mapping and other materials properties from the GLTF file.
-
-<a href="https://github.com/NVIDIAGameWorks/kaolin/blob/master/examples/tutorial/gltf_viz.ipynb"><img src="./assets/avocado.png" alt="gltf notebook" height="250" /></a>
-
-See [change logs](https://github.com/NVIDIAGameWorks/kaolin/releases/tag/v0.15.0) for details.
+See [change logs](https://github.com/NVIDIAGameWorks/kaolin/releases/tag/v0.17.0) for details.
 
 ## Contributing
 
@@ -63,10 +61,12 @@ Please review our [contribution guidelines](CONTRIBUTING.md).
 * [Flexible Isosurface Extraction for Gradient-Based Mesh Optimization (FlexiCubes)
 ](https://github.com/nv-tlabs/FlexiCubes):
     * Use [Flexicube class](https://kaolin.readthedocs.io/en/latest/modules/kaolin.non_commercial.html#kaolin.non_commercial.FlexiCubes), [obj loader](https://kaolin.readthedocs.io/en/latest/modules/kaolin.io.obj.html), [turntable visualizer](https://kaolin.readthedocs.io/en/latest/modules/kaolin.visualize.html#kaolin.visualize.IpyTurntableVisualizer)
+* [SATR](https://github.com/Samir55/SATR):
+    * Use [Kaolin's rendering functions](https://kaolin.readthedocs.io/en/latest/modules/kaolin.render.mesh.html#), [lighting functions](https://kaolin.readthedocs.io/en/latest/modules/kaolin.render.lighting.html),  [camera functions](https://kaolin.readthedocs.io/en/latest/modules/kaolin.render.camera.html), and [obj](https://kaolin.readthedocs.io/en/latest/modules/kaolin.io.obj.html#kaolin.io.obj.import_mesh)/[off](https://kaolin.readthedocs.io/en/latest/modules/kaolin.io.off.html#kaolin.io.off.import_mesh) importers.
 
 ## Licenses
 
-Most of Kaolin's repository is under [Apache v2.0 license](LICENSE), except under [kaolin/non_commercial](kaolin/non_commercial/) which is under [NSCL license](LICENSE.NSCL) restricted to non commercial usage for research and evaluation purposes. For example, FlexiCubes method is included under [non_commercial](kaolin/non_commercial/flexicubes/flexicubes.py).
+Most of Kaolin's repository is under [Apache v2.0 license](LICENSE), except under [kaolin/non_commercial](kaolin/non_commercial/) which is under [NSCL license](LICENSE.NSCL) restricted to non commercial usage for research and evaluation purposes.
 
 Default `kaolin` import includes Apache-licensed components:
 ```
@@ -78,16 +78,22 @@ The non-commercial components need to be explicitly imported as:
 import kaolin.non_commercial
 ```
 
+### Update
+
+FlexiCubes is now under Apache-v2 [here](https://github.com/NVIDIAGameWorks/kaolin/tree/master/kaolin/ops/conversions/flexicubes/flexicubes.py),
+the [old version](https://github.com/NVIDIAGameWorks/kaolin/tree/master/kaolin/non_commercial/flexicubes/flexicubes.py) is maintained for backward compatibility
+
 ## Citation
 
 If you are using Kaolin library for your research, please cite:
 
 ```
-@misc{KaolinLibrary,
-      author = {Fuji Tsang, Clement and Shugrina, Maria and Lafleche, Jean Francois and Takikawa, Towaki and Wang, Jiehan and Loop, Charles and Chen, Wenzheng and Jatavallabhula, Krishna Murthy and Smith, Edward and Rozantsev, Artem and Perel, Or and Shen, Tianchang and Gao, Jun and Fidler, Sanja and State, Gavriel and Gorski, Jason and Xiang, Tommy and Li, Jianing and Li, Michael and Lebaredian, Rev},
+@software{KaolinLibrary,
+      author = {Fuji Tsang, Clement and Shugrina, Maria and Lafleche, Jean Francois and Perel, Or and Loop, Charles and Takikawa, Towaki and Modi, Vismay and Zook, Alexander and Wang, Jiehan and Chen, Wenzheng and Shen, Tianchang and Gao, Jun and Jatavallabhula, Krishna Murthy and Smith, Edward and Rozantsev, Artem and Fidler, Sanja and State, Gavriel and Gorski, Jason and Xiang, Tommy and Li, Jianing and Li, Michael and Lebaredian, Rev},
       title = {Kaolin: A Pytorch Library for Accelerating 3D Deep Learning Research},
-      year = {2022},
-      howpublished={\url{https://github.com/NVIDIAGameWorks/kaolin}}
+      date = {2024-11-20},
+      version = {0.17.0},
+      url={\url{https://github.com/NVIDIAGameWorks/kaolin}}
 }
 ```
 
@@ -98,6 +104,7 @@ Current Team:
 - Technical Lead: Clement Fuji Tsang
 - Manager: Maria (Masha) Shugrina
 - Charles Loop
+- Vismay Modi
 - Or Perel
 - Alexander Zook
 

@@ -26,11 +26,15 @@
 #include "./render/mesh/rasterization.h"
 #include "./render/sg/unbatched_reduced_sg_inner_product.h"
 #include "./ops/conversions/mesh_to_spc/mesh_to_spc.h"
+#include "./ops/conversions/gs_to_spc/gs_to_spc.h"
+#include "./ops/mesh/triangle_hash.h"
 #include "./ops/spc/spc.h"
 #include "./ops/spc/feature_grids.h"
 #include "./render/spc/raytrace.h"
 #include "./ops/spc/query.h"
 #include "./ops/spc/point_utils.h"
+#include "./ops/spc/recon.h"
+#include "./ops/spc/bf.h"
 
 namespace kaolin {
 
@@ -42,19 +46,40 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   ops.def("tile_to_packed_out_cuda", &tile_to_packed_out_cuda);
     py::module ops_mesh = ops.def_submodule("mesh");
     ops_mesh.def("unbatched_mesh_intersection_cuda", &unbatched_mesh_intersection_cuda);
+    py::class_<TriangleHash>(ops_mesh, "TriangleHash")
+      .def(py::init<torch::Tensor, int>(),
+           py::arg("triangles"), py::arg("resolution"))
+      .def("query", &TriangleHash::query, py::arg("points"));
     py::module ops_conversions = ops.def_submodule("conversions");
     ops_conversions.def("unbatched_mcube_forward_cuda", &unbatched_mcube_forward_cuda);
     ops_conversions.def("mesh_to_spc_cuda", &mesh_to_spc_cuda);
+    ops_conversions.def("gs_to_spc_cuda", &gs_to_spc_cuda);
     py::module ops_spc = ops.def_submodule("spc");
 #if WITH_CUDA
     ops_spc.def("query_cuda", &query_cuda);
     ops_spc.def("query_multiscale_cuda", &query_multiscale_cuda);
+    ops_spc.def("query_cuda_empty", &query_cuda_empty);
     ops_spc.def("points_to_morton_cuda", &points_to_morton_cuda);
     ops_spc.def("morton_to_points_cuda", &morton_to_points_cuda);
     ops_spc.def("interpolate_trilinear_cuda", &interpolate_trilinear_cuda);
     ops_spc.def("coords_to_trilinear_cuda", &coords_to_trilinear_cuda);
     //ops_spc.def("coord_to_trilinear_jacobian_cuda", &coord_to_trilinear_jacobian_cuda);
     ops_spc.def("points_to_corners_cuda", &points_to_corners_cuda);
+
+    ops_spc.def("inclusive_sum", &inclusive_sum);
+    ops_spc.def("compactify", &compactify);
+    ops_spc.def("compactify_nodes", &compactify_nodes);
+    ops_spc.def("subdivide", &subdivide);
+    ops_spc.def("build_mip2d", &build_mip2d);
+    ops_spc.def("oracleB", &oracleB);
+    ops_spc.def("colorsB_final", &colorsB_final);
+    ops_spc.def("oracleB_final", &oracleB_final);
+    ops_spc.def("process_final_voxels", &process_final_voxels);
+    ops_spc.def("merge_empty", &merge_empty);
+    ops_spc.def("bq_merge", &bq_merge);
+    ops_spc.def("bq_extract", &bq_extract);
+    ops_spc.def("bq_touch", &bq_touch);
+    ops_spc.def("bq_touch_extract", &bq_touch_extract);
 #endif  // WITH_CUDA
     ops_spc.def("points_to_octree", &points_to_octree);
     ops_spc.def("morton_to_octree", &morton_to_octree);

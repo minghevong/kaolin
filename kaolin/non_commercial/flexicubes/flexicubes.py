@@ -6,19 +6,17 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION & AFFILIATES is strictly prohibited.
 
+import warnings
 import torch
 from .tables import *
-from kaolin.utils.testing import check_tensor
+import kaolin.utils.testing
 
 __all__ = [
     'FlexiCubes'
 ]
 
-
 class FlexiCubes:
-    """
-
-    This class implements the FlexiCubes method for extracting meshes from scalar fields. 
+    """This class implements the FlexiCubes method for extracting meshes from scalar fields. 
     It maintains a series of lookup tables and indices to support the mesh extraction process. 
     FlexiCubes, a differentiable variant of the Dual Marching Cubes (DMC) scheme, enhances 
     the geometric fidelity and mesh quality of reconstructed meshes by dynamically adjusting 
@@ -26,6 +24,9 @@ class FlexiCubes:
 
     During instantiation, the class loads DMC tables from a file and transforms them into 
     PyTorch tensors on the specified device.
+
+    .. deprecated::
+       Due to license changes, FlexiCubes has been moved to :class:`kaolin.ops.conversions.FlexiCubes`
 
     .. image:: ../img/flexicubes.png
         :width: 600
@@ -77,6 +78,9 @@ class FlexiCubes:
     """
 
     def __init__(self, device="cuda"):
+        warnings.warn(
+            "Due change of license, flexicube has been moved to kaolin.ops.conversions",
+            DeprecationWarning, stacklevel=2)
 
         self.device = device
         self.dmc_table = torch.tensor(dmc_table, dtype=torch.long, device=device, requires_grad=False)
@@ -229,27 +233,27 @@ class FlexiCubes:
             https://people.engr.tamu.edu/schaefer/research/dualsimp_tvcg.pdf
         """
         assert torch.is_tensor(voxelgrid_vertices) and \
-            check_tensor(voxelgrid_vertices, (None, 3), throw=False), \
+            kaolin.utils.testing.check_tensor(voxelgrid_vertices, (None, 3), throw=False), \
             "'voxelgrid_vertices' should be a tensor of shape (num_vertices, 3)"
         num_vertices = voxelgrid_vertices.shape[0]
         assert torch.is_tensor(scalar_field) and \
-            check_tensor(scalar_field, (num_vertices,), throw=False), \
+            kaolin.utils.testing.check_tensor(scalar_field, (num_vertices,), throw=False), \
             "'scalar_field' should be a tensor of shape (num_vertices,)"
         assert torch.is_tensor(cube_idx) and \
-            check_tensor(cube_idx, (None, 8), throw=False), \
+            kaolin.utils.testing.check_tensor(cube_idx, (None, 8), throw=False), \
             "'cube_idx' should be a tensor of shape (num_cubes, 8)"
         num_cubes = cube_idx.shape[0]
         assert beta is None or (
             torch.is_tensor(beta) and
-            check_tensor(beta, (num_cubes, 12), throw=False)
+            kaolin.utils.testing.check_tensor(beta, (num_cubes, 12), throw=False)
         ), "'beta' should be a tensor of shape (num_cubes, 12)"
         assert alpha is None or (
             torch.is_tensor(alpha) and
-            check_tensor(alpha, (num_cubes, 8), throw=False)
+            kaolin.utils.testing.check_tensor(alpha, (num_cubes, 8), throw=False)
         ), "'alpha' should be a tensor of shape (num_cubes, 8)"
         assert gamma_f is None or (
             torch.is_tensor(gamma_f) and
-            check_tensor(gamma_f, (num_cubes,), throw=False)
+            ckaolin.utils.testing.heck_tensor(gamma_f, (num_cubes,), throw=False)
         ), "'gamma_f' should be a tensor of shape (num_cubes,)"
 
         surf_cubes, occ_fx8 = self._identify_surf_cubes(scalar_field, cube_idx)

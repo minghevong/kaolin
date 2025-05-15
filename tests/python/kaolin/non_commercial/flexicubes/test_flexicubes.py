@@ -1,4 +1,4 @@
-# Copyright (c) 2023 YOUR_ORGANIZATION_NAME.
+# Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES.
 # All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -240,6 +240,10 @@ class TestFlexiCubes:
         tri_10 = torch.sort(quad[:, [0, 1, 3]], dim=1)[0]
         tri_11 = torch.sort(quad[:, [1, 2, 3]], dim=1)[0]
         return tri_00, tri_01, tri_10, tri_11
+
+    def test_deprecatedwarning(self, device):
+        with pytest.deprecated_call():
+            fc = FlexiCubes(device)
 
     def test_grid_construction(self, expected_grid, device):
         fc = FlexiCubes(device)
