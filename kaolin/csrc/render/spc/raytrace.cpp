@@ -178,14 +178,19 @@ std::vector<at::Tensor> raytrace_cuda(
     bool return_depth,
     bool with_exit) {
 #ifdef WITH_CUDA
+  // 为每个输入张量创建 TensorArg 包装器，参数结构：(张量, 名称, 参数位置)
+  // 目的：封装张量及其元数据用于后续检查。
   at::TensorArg octree_arg{octree, "octree", 1};
   at::TensorArg points_arg{points, "points", 2};
   at::TensorArg pyramid_arg{pyramid, "pyramid", 3};
   at::TensorArg exclusive_sum_arg{exclusive_sum, "exclusive_sum", 4};
   at::TensorArg ray_o_arg{ray_o, "ray_o", 5};
   at::TensorArg ray_d_arg{ray_d, "ray_d", 6};
+  // 功能：验证列出的所有张量位于相同 GPU 设备。
   at::checkAllSameGPU(__func__, {octree_arg, points_arg, exclusive_sum_arg, ray_o_arg, ray_d_arg});
+  // 功能：确保张量内存布局连续，CUDA 内核通常要求连续内存。
   at::checkAllContiguous(__func__,  {octree_arg, points_arg, exclusive_sum_arg, ray_o_arg, ray_d_arg});
+  // 功能：强制 pyramid 张量必须位于 CPU。
   at::checkDeviceType(__func__, {pyramid}, at::DeviceType::CPU);
   
   CHECK_SHORT(points);
