@@ -304,11 +304,13 @@ void points_to_corners_cuda_impl(
     );
 }
 
+// 计算三维栅格空间中，第个点所在的栅格的周围其他26个栅格的3D坐标。
 void points_to_neighbors_cuda_impl(
     at::Tensor points,
     at::Tensor neighbors
 ) {
     int64_t num_points = points.size(0);
+    // 计算三维栅格空间中，第i个点所在的栅格的周围其他26个栅格的3D坐标。
     points_to_neighbors_cuda_kernel<<<(num_points + 1023) / 1024, 1024>>>(
         reinterpret_cast<point_data*>(points.data_ptr<short>()),
         reinterpret_cast<point_data*>(neighbors.data_ptr<short>()),
