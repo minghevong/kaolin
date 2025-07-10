@@ -41,6 +41,7 @@ __global__ void points_to_corners_cuda_kernel(
     }
 }
 
+// 计算三维栅格空间中，第i个点所在的栅格的周围其他26个栅格的3D坐标。
 __global__ void points_to_neighbors_cuda_kernel(
     const point_data* point,
     point_data* neighbors,
