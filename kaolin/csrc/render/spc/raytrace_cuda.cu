@@ -172,7 +172,8 @@ namespace kaolin
       // Compute aux info (precompute to optimize)
       float3 sgn = ray_sgn(d);
       float3 ray_inv = make_float3(1.0 / d.x, 1.0 / d.y, 1.0 / d.z);
-
+      
+      // 
       depth[tidx] = ray_aabb(o, d, ray_inv, sgn, vc, r);
 
       // Perform AABB check
