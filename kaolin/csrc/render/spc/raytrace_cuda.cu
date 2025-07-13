@@ -173,7 +173,7 @@ namespace kaolin
       float3 sgn = ray_sgn(d);
       float3 ray_inv = make_float3(1.0 / d.x, 1.0 / d.y, 1.0 / d.z);
       
-      // 
+      // 计算射线ray_o[ridx]与points[pidx]的AABB包围盒的交点的距离值depth[tidx]。
       depth[tidx] = ray_aabb(o, d, ray_inv, sgn, vc, r);
 
       // Perform AABB check
@@ -597,6 +597,7 @@ namespace kaolin
 
         if (with_exit)
         {
+          // 计算射线ray_o[ridx]与points[pidx]的AABB包围盒的交点的距离值depth[tidx]。
           decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
               num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
               reinterpret_cast<float2 *>(l == target_level ? depths0.data_ptr<float>() : 0),
@@ -604,6 +605,7 @@ namespace kaolin
         }
         else
         {
+          // 计算射线ray_o[ridx]与points[pidx]的AABB包围盒的交点的距离值depth[tidx]。
           decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
               num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
               l == target_level ? depths0.data_ptr<float>() : 0, info_ptr, octree_ptr, l);
@@ -611,6 +613,7 @@ namespace kaolin
       }
       else
       {
+        // 计算射线ray_o[ridx]与points[pidx]的AABB包围盒的交点的距离值depth[tidx]。
         decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
             num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
             info_ptr, octree_ptr, l, target_level - l);
