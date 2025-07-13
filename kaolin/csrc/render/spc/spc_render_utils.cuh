@@ -96,6 +96,7 @@ static __inline__ __device__ float3 ray_flip(
     else if (test1) { _sgn.y = sgn.y; }
     else if (test2) { _sgn.z = sgn.z; }
 
+    // 射线起点与AABB矩形其中一个面的交点的距离d.
     float d = 0.0f;
     if (_sgn.x != 0.0f) { d = d0; } 
     else if (_sgn.y != 0.0f) { d = d1; }
