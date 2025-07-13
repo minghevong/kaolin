@@ -72,9 +72,9 @@ static __inline__ __device__ float3 ray_flip(
     }
 
     // Compute distance to planes
-    float d0 = fmaf(winding, sgn.x, - o.x) * invdir.x;
-    float d1 = fmaf(winding, sgn.y, - o.y) * invdir.y;
-    float d2 = fmaf(winding, sgn.z, - o.z) * invdir.z;
+    float d0 = fmaf(winding, sgn.x, - o.x) * invdir.x;      // 射线起始点o距离射线与AABB矩形的最近yz平面交点的线段长度。
+    float d1 = fmaf(winding, sgn.y, - o.y) * invdir.y;      // 射线起始点o距离射线与AABB矩形的最近xz平面交点的线段长度。
+    float d2 = fmaf(winding, sgn.z, - o.z) * invdir.z;      // 射线起始点o距离射线与AABB矩形的最近xy平面交点的线段长度。
     float ltxy = fmaf(dir.y, d0, o.y);
     float ltxz = fmaf(dir.z, d0, o.z);
     float ltyx = fmaf(dir.x, d1, o.x);
