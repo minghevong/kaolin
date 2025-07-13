@@ -78,6 +78,7 @@ namespace kaolin
     }
   }
 
+  // 该函数将迭代这些块 (射线交叉提议), 并确定它们是否会导致交叉。如果会，则信息张量将由输入八叉树确定的子节点的 #填充。
   // This function will iterate over the nuggets (ray intersection proposals) and determine if they
   // result in an intersection. If they do, the info tensor is populated with the # of child nodes
   // as determined by the input octree.
@@ -105,7 +106,7 @@ namespace kaolin
       float3 d = ray_d[ridx];
 
       // Radius of voxel
-      float r = 1.0 / ((float)(0x1 << level));
+      float r = 1.0 / ((float)(0x1 << level));    // level的值由0 --> target_level-1
 
       // Transform to [-1, 1]
       const float3 vc = make_float3(
