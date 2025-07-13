@@ -43,18 +43,20 @@ static __inline__ __device__ float3 ray_flip(
                        1.0 / (dir.z+eps));
 }
 
+// https://zhuanlan.zhihu.com/p/610258258
 // Device primitive for a single ray-AABB intersection
  static __inline__ __device__ float ray_aabb(
     const float3 query,  // query point (or ray origin)
     const float3 dir,    // ray direction
     const float3 invdir, // ray inverse direction
     const float3 sgn,    // sgn bits
-    const float3 origin, // origin of aabb
-    const float  r       // radius of aabb
+    const float3 origin, // origin of aabb，    AABB的中心
+    const float  r       // radius of aabb，    AABB的半径 
 ) {
     // From Majercik et. al 2018
 
     // Put the center of the AABB at the origin [0, 0, 0]
+    // 将 AABB中心点作为坐标系原点。
     float3 o = make_float3(query.x-origin.x, query.y-origin.y, query.z-origin.z);
 
     // Maximum Component
