@@ -90,7 +90,8 @@ namespace kaolin
       const float3 *__restrict__ ray_d,
       const uint2 *__restrict__ nuggets,
       uint *__restrict__ info,
-      const uint8_t *__restrict__ octree,
+      // torch.ByteTensor是 8 位无符号整数（uint8），标记体素是否被占用（0 表示空，1 表示占用）。
+      const uint8_t *__restrict__ octree,   
       const uint32_t level,
       const uint32_t not_done)
   {
@@ -106,7 +107,7 @@ namespace kaolin
       float3 d = ray_d[ridx];
 
       // Radius of voxel
-      float r = 1.0 / ((float)(0x1 << level));    // level的值由0 --> target_level-1
+      float r = 1.0 / ((float)(0x1 << level));    // level的值由 0 逐步增加到 target_level-1 最大
 
       // Transform to [-1, 1]
       const float3 vc = make_float3(
@@ -117,18 +118,22 @@ namespace kaolin
       // Compute aux info (precompute to optimize)
       float3 sgn = ray_sgn(d);
       float3 ray_inv = make_float3(1.0 / d.x, 1.0 / d.y, 1.0 / d.z);
-
-      float depth = ray_aabb(o, d, ray_inv, sgn, vc, r);
+      
+      // 计算 (o, d)射线 与 vc为中心，半径为r的栅格的表面交点距离 depth 。
+      // 当该射线与半径r正方体没有交点时，则返回为0.0
+      float depth = ray_aabb(o, d, ray_inv, sgn, vc, r);    // r 为第 level 层八叉树的半径。 半径 r 由粗（大）到细（小：最底层）。
 
       if (not_done)
-      {
+      {// 未到达叶子节点时
         if (depth != 0.0)
-          info[tidx] = __popc(octree[pidx]);
+          // __popc() 是一个CUDA内置函数，计算一个整数中 “置位(1)的位数”（population count）
+          // 这个值表示当前节点有多少有效的子节点？？？？
+          info[tidx] = __popc(octree[pidx]);  
         else
           info[tidx] = 0;
       }
       else
-      { // at bottom
+      {// 到达叶子节点(底部)时
         if (depth > 0.0)
           info[tidx] = 1;
         else
@@ -199,7 +204,8 @@ namespace kaolin
       const uint2 *__restrict__ nuggets,
       float2 *__restrict__ depth,
       uint *__restrict__ info,
-      const uint8_t *__restrict__ octree,
+      // torch.ByteTensor是 8 位无符号整数（uint8），标记体素是否被占用（0 表示空，1 表示占用）。
+      const uint8_t *__restrict__ octree,   
       const uint32_t level)
   {
 
@@ -552,7 +558,7 @@ namespace kaolin
   }
 
   std::vector<at::Tensor> raytrace_cuda_impl(
-      at::Tensor octree,
+      at::Tensor octree,           // torch.ByteTensor是 8 位无符号整数（uint8），标记体素是否被占用（0 表示空，1 表示占用）。
       at::Tensor points,           // 八叉树中的量化坐标（存在点云的栅格，以及其四周的26个栅格）。
       at::Tensor pyramid,
       at::Tensor exclusive_sum,

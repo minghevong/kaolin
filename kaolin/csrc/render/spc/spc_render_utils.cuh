@@ -101,6 +101,7 @@ static __inline__ __device__ float3 ray_flip(
     if (_sgn.x != 0.0f) { d = d0; } 
     else if (_sgn.y != 0.0f) { d = d1; }
     else if (_sgn.z != 0.0f) { d = d2; }
+    
     if (d != 0.0f) {
         return d;
     }
