@@ -553,7 +553,7 @@ namespace kaolin
 
   std::vector<at::Tensor> raytrace_cuda_impl(
       at::Tensor octree,
-      at::Tensor points,
+      at::Tensor points,           // 八叉树中的量化坐标（存在点云的栅格，以及其四周的26个栅格）。
       at::Tensor pyramid,
       at::Tensor exclusive_sum,
       at::Tensor ray_o,            // 射线起点（相机光心坐标）。
