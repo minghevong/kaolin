@@ -128,7 +128,7 @@ namespace kaolin
         if (depth != 0.0)
           // __popc() 是一个CUDA内置函数，计算一个整数中 “置位(1)的位数”（population count）
           // 这个值表示当前节点有多少有效的子节点？？？？
-          info[tidx] = __popc(octree[pidx]);  
+          info[tidx] = __popc(octree[pidx]);      // pidx 是当前栅格的序号，也是 octree 节点的序号。 tidx 是射线的序号。
         else
           info[tidx] = 0;
       }
@@ -593,9 +593,10 @@ namespace kaolin
     uint cnt, buffer = 0;
     for (uint32_t l = 0; l <= target_level; l++)
     {
-
+      
+      // info 记录每个射线对应的octree节点数量。
       at::Tensor info = at::empty({num + 1}, octree.options().dtype(at::kInt));
-      uint *info_ptr = reinterpret_cast<uint *>(info.data_ptr<int>());
+      uint *info_ptr = reinterpret_cast<uint *>(info.data_ptr<int>());    
 
       // Do the proposals hit?
       if (l == target_level && return_depth)
@@ -629,19 +630,25 @@ namespace kaolin
       at::Tensor prefix_sum = at::empty({num + 1}, octree.options().dtype(at::kInt));
       uint *prefix_sum_ptr = reinterpret_cast<uint *>(prefix_sum.data_ptr<int>());
 
-      // set first element to zero
+      // set first element to zero， 将前缀和数组的第一个元素赋值为0.
       CubDebugExit(cudaMemcpy(prefix_sum_ptr, &buffer, sizeof(uint), cudaMemcpyHostToDevice));
 
       // set up memory for DeviceScan calls
+      // 存储需求计算。
       void *temp_storage_ptr = NULL;
       uint64_t temp_storage_bytes = get_cub_storage_bytes(
           temp_storage_ptr, info_ptr, prefix_sum_ptr, num + 1);
+      
+      // 分配临时存储。 
       at::Tensor temp_storage = at::empty({(int64_t)temp_storage_bytes}, octree.options());
       temp_storage_ptr = (void *)temp_storage.data_ptr<uint8_t>();
-
+      
+      // prefix_sum_ptr + 1：输出从 prefix_sum 的第 2 个元素开始，存储前缀和结果。
       CubDebugExit(cub::DeviceScan::InclusiveSum(
           temp_storage_ptr, temp_storage_bytes, info_ptr,
           prefix_sum_ptr + 1, num)); // start sum on second element
+          
+      // 将 prefix_sum[num]（最后一个元素，即 info_ptr 所有元素的总和）从 GPU 复制到主机变量 cnt。
       cudaMemcpy(&cnt, prefix_sum_ptr + num, sizeof(uint), cudaMemcpyDeviceToHost);
 
       // allocate local GPU storage

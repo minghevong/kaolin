@@ -218,6 +218,7 @@ static uint64_t get_cub_storage_bytes(
     uint  max_total_points) {
     
   uint64_t temp_storage_bytes = 0;
+  // 当 temp_storage 为 NULL 时，该函数仅计算存储需求（所需空间大小temp_storage_bytes），不执行实际扫描。
   CubDebugExit(cub::DeviceScan::InclusiveSum(
       temp_storage, temp_storage_bytes, info,
       prefix_sum, max_total_points));
