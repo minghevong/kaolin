@@ -250,16 +250,16 @@ namespace kaolin
   // nuggets (as defined by the octree tensor)
   __global__ void
   subdivide_cuda_kernel(
-      const uint num,
-      const uint2 *__restrict__ nuggets_in,
+      const uint num,                           // 射线数量。
+      const uint2 *__restrict__ nuggets_in,     // 射线序号 ——> 栅格序号
       uint2 *__restrict__ nuggets_out,
-      const float3 *__restrict__ ray_o,
-      const point_data *__restrict__ points,
+      const float3 *__restrict__ ray_o,         // 射线起点坐标。
+      const point_data *__restrict__ points,    // 叶子节点的量化坐标。
       const uint8_t *__restrict__ octree,
-      const uint *__restrict__ exclusive_sum,
-      const uint *__restrict__ info,
-      const uint *__restrict__ prefix_sum,
-      const uint32_t level)
+      const uint *__restrict__ exclusive_sum,   // 用于八叉叶子节点的快速索引。存储了每个节点在扁平化存储中的偏移量。
+      const uint *__restrict__ info,            // 射线对应的节点数量。
+      const uint *__restrict__ prefix_sum,      // info的包含前缀和。
+      const uint32_t level)                     // octree 的当前分辨率等级
   {
     uint tidx = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -559,9 +559,10 @@ namespace kaolin
 
   std::vector<at::Tensor> raytrace_cuda_impl(
       at::Tensor octree,           // torch.ByteTensor是 8 位无符号整数（uint8），标记体素是否被占用（0 表示空，1 表示占用）。
-      at::Tensor points,           // 八叉树中的量化坐标（存在点云的栅格，以及其四周的26个栅格）。
+      // https://kaolin.readthedocs.io/en/stable/notes/spc_summary.html#spc-points
+      at::Tensor points,           // 从八叉树中生成的点云 kaolin::generate_points_cuda ，生成的点云是一个层次化的点云[N, 3]。
       at::Tensor pyramid,
-      at::Tensor exclusive_sum,
+      at::Tensor exclusive_sum,    // 用于八叉叶子节点的快速索引。存储了每个节点在扁平化存储中的偏移量。
       at::Tensor ray_o,            // 射线起点（相机光心坐标）。
       at::Tensor ray_d,            // 每个点云的方向向量。
       uint32_t max_level,
@@ -647,7 +648,7 @@ namespace kaolin
       CubDebugExit(cub::DeviceScan::InclusiveSum(
           temp_storage_ptr, temp_storage_bytes, info_ptr,
           prefix_sum_ptr + 1, num)); // start sum on second element
-          
+
       // 将 prefix_sum[num]（最后一个元素，即 info_ptr 所有元素的总和）从 GPU 复制到主机变量 cnt。
       cudaMemcpy(&cnt, prefix_sum_ptr + num, sizeof(uint), cudaMemcpyDeviceToHost);
 
