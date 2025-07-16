@@ -253,33 +253,43 @@ namespace kaolin
       const uint num,                           // 射线数量。
       const uint2 *__restrict__ nuggets_in,     // 射线序号 ——> 栅格序号
       uint2 *__restrict__ nuggets_out,
-      const float3 *__restrict__ ray_o,         // 射线起点坐标。
-      const point_data *__restrict__ points,    // 叶子节点的量化坐标。
+      const float3 *__restrict__ ray_o,         // 射线起点（相机光心坐标）。坐标取值在[-1,1]之间。
+      // https://kaolin.readthedocs.io/en/latest/notes/spc_summary.html#spc-attributes，其中的3D和2D 例子。
+      // 从八叉树中生成的点云 kaolin::generate_points_cuda ，生成的点云是一个层次化的点云[N, 3]。随着层次加深，量化的坐标范围越大，初始值为[0, 1]
+      const point_data *__restrict__ points,    
       const uint8_t *__restrict__ octree,
       const uint *__restrict__ exclusive_sum,   // 用于八叉叶子节点的快速索引。存储了每个节点在扁平化存储中的偏移量。
       const uint *__restrict__ info,            // 射线对应的节点数量。
       const uint *__restrict__ prefix_sum,      // info的包含前缀和。
-      const uint32_t level)                     // octree 的当前分辨率等级
+      const uint32_t level)                     // octree 的当前节点的分辨率等级
   {
     uint tidx = blockDim.x * blockIdx.x + threadIdx.x;
 
-    if (tidx < num && info[tidx])
+    if (tidx < num && info[tidx])   // 判断该射线是否有需要处理的节点。
     {
       uint ridx = nuggets_in[tidx].x;
+      // 射线对应的节点索引
       int pidx = nuggets_in[tidx].y;
-      point_data p = points[pidx];
+      // 初始时，每个射线对应节点是八叉树的根节点。在 SPC 的实现中，根节点通常表示整个空间的起点，其坐标在整数坐标系中通常是 (0, 0, 0)。
+      point_data p = points[pidx];            
 
       uint base_idx = prefix_sum[tidx];
 
-      uint8_t o = octree[pidx];
+      // 每个字节用8位二进制表示一个节点的子节点存在情况（0表示不存在，1表示存在）。
+      uint8_t o = octree[pidx];       
+      // 获取当前节点的排他性前缀和，用于计算子节点的全局索引。
       uint s = exclusive_sum[pidx];
 
+      // 1 / 2^level，表示当前层级的节点半径大小。
       float scale = 1.0 / ((float)(0x1 << level));
       float3 org = ray_o[ridx];
-      float x = (0.5f * org.x + 0.5f) - scale * ((float)p.x + 0.5);
-      float y = (0.5f * org.y + 0.5f) - scale * ((float)p.y + 0.5);
-      float z = (0.5f * org.z + 0.5f) - scale * ((float)p.z + 0.5);
+      
+      // 计算射线起点相对节点中心坐标的坐标。
+      float x = (0.5f * org.x + 0.5f) - scale * ((float)p.x + 0.5);   // (0.5f * org.x + 0.5f) 将射线起点坐标从【-1,1】缩放到【0，1】
+      float y = (0.5f * org.y + 0.5f) - scale * ((float)p.y + 0.5);   // 实际 p.x 节点坐标是整数，+0.5 表示中心。
+      float z = (0.5f * org.z + 0.5f) - scale * ((float)p.z + 0.5);   // 乘以 scale 的目的值始终将每个层级的节点缩放到【0,1】之间。（因为随着level增加，节点整数坐标范围也增加）
 
+      // 计算射线与该节点的第几（code）个子节点相交。
       uint code = 0;
       if (x > 0)
         code = 4;
@@ -290,9 +300,12 @@ namespace kaolin
 
       for (uint i = 0; i < 8; i++)
       {
-        uint j = VOXEL_ORDER[code][i];
+        // VOXEL_ORDER 定义了根据射线方向遍历子节点的顺序。不同的射线方向会导致不同的子节点优先级。
+        uint j = VOXEL_ORDER[code][i];    
+        // 遍历当前节点中与射线相交的子节点，再次遍历该子节点的下一层8个子节点，判断第二层的节点在octree中是否存在。
         if (o & (0x1 << j))
         {
+          // nuggets_out记录子节点中，（节点在全局的偏移量：对应的射线序号）
           uint cnt = __popc(o & ((0x2 << j) - 1)); // count set bits up to child - inclusive sum
           nuggets_out[base_idx].y = s + cnt;
           nuggets_out[base_idx++].x = ridx;
@@ -560,10 +573,11 @@ namespace kaolin
   std::vector<at::Tensor> raytrace_cuda_impl(
       at::Tensor octree,           // torch.ByteTensor是 8 位无符号整数（uint8），标记体素是否被占用（0 表示空，1 表示占用）。
       // https://kaolin.readthedocs.io/en/stable/notes/spc_summary.html#spc-points
+      // https://kaolin.readthedocs.io/en/latest/notes/spc_summary.html#spc-attributes，其中的3D和2D 例子。
       at::Tensor points,           // 从八叉树中生成的点云 kaolin::generate_points_cuda ，生成的点云是一个层次化的点云[N, 3]。
       at::Tensor pyramid,
       at::Tensor exclusive_sum,    // 用于八叉叶子节点的快速索引。存储了每个节点在扁平化存储中的偏移量。
-      at::Tensor ray_o,            // 射线起点（相机光心坐标）。
+      at::Tensor ray_o,            // 射线起点（相机光心坐标）。坐标取值在[-1,1]之间。
       at::Tensor ray_d,            // 每个点云的方向向量。
       uint32_t max_level,
       uint32_t target_level,
@@ -574,7 +588,9 @@ namespace kaolin
     uint num = ray_o.size(0);
 
     uint8_t *octree_ptr = octree.data_ptr<uint8_t>();
-    point_data *points_ptr = reinterpret_cast<point_data *>(points.data_ptr<short>());
+    // 从八叉树中生成的点云 kaolin::generate_points_cuda ，生成的点云是一个层次化的点云[N, 3]。
+    // 在 SPC 中，八叉树表示对三维空间的层次分解，通常定义在一个单位立方体 [0, 1]^3 内，
+    point_data *points_ptr = reinterpret_cast<point_data *>(points.data_ptr<short>());    
     uint *exclusive_sum_ptr = reinterpret_cast<uint *>(exclusive_sum.data_ptr<int>());
     float3 *ray_o_ptr = reinterpret_cast<float3 *>(ray_o.data_ptr<float>());
     float3 *ray_d_ptr = reinterpret_cast<float3 *>(ray_d.data_ptr<float>());
@@ -588,6 +604,7 @@ namespace kaolin
     at::Tensor depths1;
 
     // Generate proposals (first proposal is root node)
+    // // 序号为 0 时对应的是八叉树的根节点。在 SPC 的实现中，根节点通常表示整个空间的起点，其坐标在整数坐标系中通常是 (0, 0, 0)。
     init_nuggets_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
         num, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()));
 
