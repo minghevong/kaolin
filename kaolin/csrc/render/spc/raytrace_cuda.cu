@@ -251,7 +251,8 @@ namespace kaolin
   __global__ void
   subdivide_cuda_kernel(
       const uint num,                           // 射线数量。
-      const uint2 *__restrict__ nuggets_in,     // 射线序号 ——> 栅格序号
+      const uint2 *__restrict__ nuggets_in,     // 射线序号 ——> 当前层相交的节点序号
+      // 用于保存射线在下一层节点中的实际相交的节点序号。
       uint2 *__restrict__ nuggets_out,
       const float3 *__restrict__ ray_o,         // 射线起点（相机光心坐标）。坐标取值在[-1,1]之间。
       // https://kaolin.readthedocs.io/en/latest/notes/spc_summary.html#spc-attributes，其中的3D和2D 例子。
@@ -289,7 +290,12 @@ namespace kaolin
       float y = (0.5f * org.y + 0.5f) - scale * ((float)p.y + 0.5);   // 实际 p.x 节点坐标是整数，+0.5 表示中心。
       float z = (0.5f * org.z + 0.5f) - scale * ((float)p.z + 0.5);   // 乘以 scale 的目的值始终将每个层级的节点缩放到【0,1】之间。（因为随着level增加，节点整数坐标范围也增加）
 
-      // 计算射线与该节点的第几（code）个子节点相交。
+      // 射线（ray）起点相对节点的方向会影响子节点的遍历顺序。
+      // 这是因为射线的传播方向决定了它与子节点的相交优先级。
+      // 为了提高效率，遍历子节点的顺序需要根据射线的前进方向进行优化，以《优先访问最先相交的子节点》。
+      // 为什么需要优化遍历顺序：
+      // 1、减少不必要的测试：如果射线在某个子节点中已经找到相交点，后续子节点的检测可能就不需要了。通过优先访问最有可能相交的子节点，可以尽早终止遍历。
+      // 2、提升性能：在实时渲染或大规模场景中，减少相交测试的次数对性能提升至关重要。
       uint code = 0;
       if (x > 0)
         code = 4;
@@ -297,12 +303,13 @@ namespace kaolin
         code += 2;
       if (z > 0)
         code += 1;
-
+      
+      // 再遍历实际相交的子节点的下一层8个子节点，判断第二层的节点在octree中是否存在。
       for (uint i = 0; i < 8; i++)
       {
         // VOXEL_ORDER 定义了根据射线方向遍历子节点的顺序。不同的射线方向会导致不同的子节点优先级。
         uint j = VOXEL_ORDER[code][i];    
-        // 遍历当前节点中与射线相交的子节点，再次遍历该子节点的下一层8个子节点，判断第二层的节点在octree中是否存在。
+        // 检查当前层节点o的第j个子节点是否存在。
         if (o & (0x1 << j))
         {
           // nuggets_out记录子节点中，（节点在全局的偏移量：对应的射线序号）
@@ -639,12 +646,14 @@ namespace kaolin
       }
       else
       {
+        // info 数组中保存每个射线相交的节点的子节点数量。
         // 计算射线ray_o[ridx]与points[pidx]的AABB包围盒的交点的距离值depth[tidx]。
         decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
             num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
             info_ptr, octree_ptr, l, target_level - l);
       }
 
+      // 创建数组，用于记录 info 数组中的前缀和。
       at::Tensor prefix_sum = at::empty({num + 1}, octree.options().dtype(at::kInt));
       uint *prefix_sum_ptr = reinterpret_cast<uint *>(prefix_sum.data_ptr<int>());
 
@@ -652,8 +661,8 @@ namespace kaolin
       CubDebugExit(cudaMemcpy(prefix_sum_ptr, &buffer, sizeof(uint), cudaMemcpyHostToDevice));
 
       // set up memory for DeviceScan calls
-      // 存储需求计算。
       void *temp_storage_ptr = NULL;
+      // 计算存储所需要的空间。
       uint64_t temp_storage_bytes = get_cub_storage_bytes(
           temp_storage_ptr, info_ptr, prefix_sum_ptr, num + 1);
       
@@ -661,12 +670,12 @@ namespace kaolin
       at::Tensor temp_storage = at::empty({(int64_t)temp_storage_bytes}, octree.options());
       temp_storage_ptr = (void *)temp_storage.data_ptr<uint8_t>();
       
-      // prefix_sum_ptr + 1：输出从 prefix_sum 的第 2 个元素开始，存储前缀和结果。
+      // 计算 info_ptr 数组的前缀和。
       CubDebugExit(cub::DeviceScan::InclusiveSum(
           temp_storage_ptr, temp_storage_bytes, info_ptr,
           prefix_sum_ptr + 1, num)); // start sum on second element
 
-      // 将 prefix_sum[num]（最后一个元素，即 info_ptr 所有元素的总和）从 GPU 复制到主机变量 cnt。
+      // 得到所有射线在下一层节点的候选相交的总数量 cnt 。
       cudaMemcpy(&cnt, prefix_sum_ptr + num, sizeof(uint), cudaMemcpyDeviceToHost);
 
       // allocate local GPU storage
