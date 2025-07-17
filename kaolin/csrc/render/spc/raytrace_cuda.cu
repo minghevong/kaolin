@@ -314,8 +314,8 @@ namespace kaolin
         {
           // nuggets_out记录子节点中，（节点在全局的偏移量：对应的射线序号）
           uint cnt = __popc(o & ((0x2 << j) - 1)); // count set bits up to child - inclusive sum
-          nuggets_out[base_idx].y = s + cnt;
-          nuggets_out[base_idx++].x = ridx;
+          nuggets_out[base_idx].y = s + cnt;    // 子节点的全局序号。
+          nuggets_out[base_idx++].x = ridx;     // 对应的射线序号。
         }
       }
     }
@@ -694,6 +694,7 @@ namespace kaolin
       // Subdivide if more levels remain, repeat
       if (l < target_level)
       {
+        // 实现将当前节点的下一层《所有》子节点的全局偏移序号和对应的射线保存在 nuggets1 中。
         subdivide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
             num, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()), reinterpret_cast<uint2 *>(nuggets1.data_ptr<int>()), ray_o_ptr, points_ptr,
             octree_ptr, exclusive_sum_ptr, info_ptr, prefix_sum_ptr, l);
@@ -722,6 +723,9 @@ namespace kaolin
           }
         }
       }
+      //////////////////////////////////
+      // 准备计算下一层节点，重复以上步骤。
+      //////////////////////////////////
       nuggets0 = nuggets1;
       num = cnt;
     }
