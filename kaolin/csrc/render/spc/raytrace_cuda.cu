@@ -209,10 +209,10 @@ namespace kaolin
 
     uint tidx = blockDim.x * blockIdx.x + threadIdx.x;
 
-    if (tidx < num)
+    if (tidx < num)   // num 为 （节点全局序号 ， 射线序号）对 的数量。
     {
-      uint ridx = nuggets[tidx].x;
-      uint pidx = nuggets[tidx].y;
+      uint ridx = nuggets[tidx].x;  // 射线序号
+      uint pidx = nuggets[tidx].y;  // 节点全局序号
       point_data p = points[pidx];
       float3 o = ray_o[ridx];
       float3 d = ray_d[ridx];
@@ -620,11 +620,11 @@ namespace kaolin
 
     // cnt 保存当前 nuggets0 节点中的下一层子节点的总数量。
     uint cnt, buffer = 0;
-    
+
     for (uint32_t l = 0; l <= target_level; l++)
     {
       
-      // info 记录每个射线对应的octree节点数量。
+      // info 用于记录每个节点对应的子节点数量。
       at::Tensor info = at::empty({num + 1}, octree.options().dtype(at::kInt));
       uint *info_ptr = reinterpret_cast<uint *>(info.data_ptr<int>());    
 
@@ -638,8 +638,7 @@ namespace kaolin
           // 计算射线ray_o[ridx]与points[pidx]的AABB包围盒的交点的距离值depth[tidx]。
           decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
               num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
-              reinterpret_cast<float2 *>(l == target_level ? depths0.data_ptr<float>() : 0),
-              info_ptr, octree_ptr, l);
+              reinterpret_cast<float2 *>(l == target_level ? depths0.data_ptr<float>() : 0), info_ptr, octree_ptr, l);
         }
         else
         {
