@@ -193,6 +193,7 @@ namespace kaolin
   }
 
   // Overloaded version of function above that returns depth of voxel/ ray entry and exit points
+  // 返回： 射线是否对应根节点 info[tidx] ， 射线起点到根节点的距离 depth[tidx] 。
   __global__ void
   decide_cuda_kernel(
       const uint num,
@@ -206,7 +207,7 @@ namespace kaolin
       const uint8_t *__restrict__ octree,   
       const uint32_t level)
   {
-
+    // 第 tidx 个（节点全局序号 ， 射线序号）对 。
     uint tidx = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (tidx < num)   // num 为 （节点全局序号 ， 射线序号）对 的数量。
@@ -635,14 +636,14 @@ namespace kaolin
 
         if (with_exit)
         {
-          // 计算射线ray_o[ridx]与points[pidx]的AABB包围盒的交点的距离值depth[tidx]。
+          // 返回： 射线是否对应根节点 info[tidx] ， 射线起点到根节点的距离 depth[tidx] 。
           decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
               num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
               reinterpret_cast<float2 *>(l == target_level ? depths0.data_ptr<float>() : 0), info_ptr, octree_ptr, l);
         }
         else
         {
-          // 计算射线ray_o[ridx]与points[pidx]的AABB包围盒的交点的距离值depth[tidx]。
+          // 返回： 射线是否对应根节点 info[tidx] ， 射线起点到根节点的距离 depth[tidx] 。
           decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
               num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
               l == target_level ? depths0.data_ptr<float>() : 0, info_ptr, octree_ptr, l);
@@ -739,12 +740,12 @@ namespace kaolin
     }
 
     if (return_depth)
-    {
+    { //返回： 「根节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets 中。
       return {nuggets0.index({Slice(0, num)}).contiguous(),
               depths1.index({Slice(0, num)}).contiguous()};
     }
     else
-    {
+    { //返回： 「根节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets 中。
       return {nuggets0.index({Slice(0, num)}).contiguous()};
     }
   }
