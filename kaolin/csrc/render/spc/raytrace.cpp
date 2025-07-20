@@ -169,7 +169,7 @@ std::vector<at::Tensor> generate_primary_rays_cuda(
 
 std::vector<at::Tensor> raytrace_cuda(
     at::Tensor octree,
-    at::Tensor points,            // 从八叉树中生成的点云 kaolin::generate_points_cuda ，生成的点云是一个层次化的点云[N, 3]。
+    at::Tensor points,   // 从八叉树中生成的点云 kaolin::generate_points_cuda ，生成的点云是一个层次化的点云[N, 3]。其中根节点为[0,0,0].
     at::Tensor pyramid,
     at::Tensor exclusive_sum,     // 用于八叉叶子节点的快速索引。存储了每个节点在扁平化存储中的偏移量。
     at::Tensor ray_o,             // 射线起点（相机光心坐标）。坐标取值在[-1,1]之间。

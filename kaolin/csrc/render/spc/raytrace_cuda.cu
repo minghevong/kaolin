@@ -85,7 +85,9 @@ namespace kaolin
   __global__ void
   decide_cuda_kernel(
       const uint num,
-      const point_data *__restrict__ points,
+      // https://kaolin.readthedocs.io/en/stable/notes/spc_summary.html#spc-points
+      // https://kaolin.readthedocs.io/en/latest/notes/spc_summary.html#spc-attributes，其中的3D和2D 例子。
+      const point_data *__restrict__ points,    // 层次化节点，其中根节点为[0,0,0]。叶子节点坐标在[0, 2^max_level-1]之间。
       const float3 *__restrict__ ray_o,
       const float3 *__restrict__ ray_d,
       const uint2 *__restrict__ nuggets,
@@ -107,11 +109,11 @@ namespace kaolin
       float3 d = ray_d[ridx];
 
       // Radius of voxel
-      float r = 1.0 / ((float)(0x1 << level));    // level的值由 0 逐步增加到 target_level-1 最大
+      float r = 1.0 / ((float)(0x1 << level));      // level的值由 0 逐步增加到 target_level-1 最大
 
       // Transform to [-1, 1]
       const float3 vc = make_float3(
-          fmaf(r, fmaf(2.0, p.x, 1.0), -1.0f),
+          fmaf(r, fmaf(2.0, p.x, 1.0), -1.0f),      // 因为随着level增加，节点整数坐标p的范围也增加，0 到 2^L - 1）
           fmaf(r, fmaf(2.0, p.y, 1.0), -1.0f),
           fmaf(r, fmaf(2.0, p.z, 1.0), -1.0f));
 
@@ -581,7 +583,7 @@ namespace kaolin
       at::Tensor octree,           // torch.ByteTensor是 8 位无符号整数（uint8），标记体素是否被占用（0 表示空，1 表示占用）。
       // https://kaolin.readthedocs.io/en/stable/notes/spc_summary.html#spc-points
       // https://kaolin.readthedocs.io/en/latest/notes/spc_summary.html#spc-attributes，其中的3D和2D 例子。
-      at::Tensor points,           // 从八叉树中生成的点云 kaolin::generate_points_cuda ，生成的点云是一个层次化的点云[N, 3]。
+      at::Tensor points,  // 从八叉树中生成的点云 kaolin::generate_points_cuda ，生成的点云是一个层次化的点云[N, 3]。其中根节点为[0,0,0]。
       at::Tensor pyramid,
       at::Tensor exclusive_sum,    // 用于八叉叶子节点的快速索引。存储了每个节点在扁平化存储中的偏移量。
       at::Tensor ray_o,            // 射线起点（相机光心坐标）。坐标取值在[-1,1]之间。
@@ -596,7 +598,7 @@ namespace kaolin
 
     uint8_t *octree_ptr = octree.data_ptr<uint8_t>();
     // 从八叉树中生成的点云 kaolin::generate_points_cuda ，生成的点云是一个层次化的点云[N, 3]。
-    // 在 SPC 中，八叉树表示对三维空间的层次分解，通常定义在一个单位立方体 [0, 1]^3 内，
+    // 其中根节点为[0,0,0]。
     point_data *points_ptr = reinterpret_cast<point_data *>(points.data_ptr<short>());    
     uint *exclusive_sum_ptr = reinterpret_cast<uint *>(exclusive_sum.data_ptr<int>());
     float3 *ray_o_ptr = reinterpret_cast<float3 *>(ray_o.data_ptr<float>());
@@ -615,6 +617,7 @@ namespace kaolin
     init_nuggets_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
         num, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()));
 
+    // cnt 保存当前 nuggets0 节点中的下一层子节点的总数量。
     uint cnt, buffer = 0;
     for (uint32_t l = 0; l <= target_level; l++)
     {
@@ -647,7 +650,6 @@ namespace kaolin
       else
       {
         // info 数组中保存每个射线相交的节点的子节点数量。
-        // 计算射线ray_o[ridx]与points[pidx]的AABB包围盒的交点的距离值depth[tidx]。
         decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
             num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
             info_ptr, octree_ptr, l, target_level - l);
