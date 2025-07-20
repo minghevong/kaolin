@@ -78,10 +78,7 @@ namespace kaolin
     }
   }
 
-  // 该函数将迭代这些块 (射线交叉提议), 并确定它们是否会导致交叉。如果会，则信息张量将由输入八叉树确定的子节点的 #填充。
-  // This function will iterate over the nuggets (ray intersection proposals) and determine if they
-  // result in an intersection. If they do, the info tensor is populated with the # of child nodes
-  // as determined by the input octree.
+  // 使用AABB判断第 tidx 个射线是否与当前节点相交，如果相交则记录该节点的叶子节点数量到 info[tidx] = __popc(octree[pidx])
   __global__ void
   decide_cuda_kernel(
       const uint num,
@@ -121,24 +118,23 @@ namespace kaolin
       float3 sgn = ray_sgn(d);
       float3 ray_inv = make_float3(1.0 / d.x, 1.0 / d.y, 1.0 / d.z);
       
-      // 计算 (o, d)射线 与 vc为中心，半径为r的栅格的表面交点距离 depth 。
-      // 当该射线与半径r正方体没有交点时，则返回为0.0
+      // 计算射线起点 与 半径为r的栅格的表面交点的距离。
       float depth = ray_aabb(o, d, ray_inv, sgn, vc, r);    // r 为第 level 层八叉树的半径。 半径 r 由粗（大）到细（小：最底层）。
 
       if (not_done)
       {// 未到达叶子节点时
-        if (depth != 0.0)
-          // __popc() 是一个CUDA内置函数，计算一个整数中 “置位(1)的位数”（population count）
-          // 这个值表示当前节点有多少有效的子节点？？？？
-          info[tidx] = __popc(octree[pidx]);      // pidx 是当前栅格的序号，也是 octree 节点的序号。 tidx 是射线的序号。
-        else
+
+        if (depth != 0.0) // 射线与当前节点的AABB有交点。
+          info[tidx] = __popc(octree[pidx]);      // 保存该节点的子节点数量。
+        else  // 没有交点。
           info[tidx] = 0;
       }
       else
       {// 到达叶子节点(底部)时
-        if (depth > 0.0)
+
+        if (depth > 0.0)    // 与叶子节点相交。
           info[tidx] = 1;
-        else
+        else  // 没有交点
           info[tidx] = 0;
       }
     }
@@ -181,7 +177,7 @@ namespace kaolin
       float3 sgn = ray_sgn(d);
       float3 ray_inv = make_float3(1.0 / d.x, 1.0 / d.y, 1.0 / d.z);
       
-      // 计算射线ray_o[ridx]与points[pidx]的AABB包围盒的交点的距离值depth[tidx]。
+      // 计算射线ray_o[ridx]起点与AABB包围盒的交点的距离值。
       depth[tidx] = ray_aabb(o, d, ray_inv, sgn, vc, r);
 
       // Perform AABB check
@@ -248,8 +244,7 @@ namespace kaolin
     }
   }
 
-  // This function will iterate over the nugget array, and for each nuggets stores the child indices of the
-  // nuggets (as defined by the octree tensor)
+  // 返回所有 ("y"子节点全局序号， "x"射线序号) 对 <————> "nuggets_out"
   __global__ void
   subdivide_cuda_kernel(
       const uint num,                           // 射线数量。
@@ -271,25 +266,27 @@ namespace kaolin
     if (tidx < num && info[tidx])   // 判断该射线是否有需要处理的节点。
     {
       uint ridx = nuggets_in[tidx].x;
-      // 射线对应的节点索引
+      // 射线对应的《父节点索引》
       int pidx = nuggets_in[tidx].y;
-      // 初始时，每个射线对应节点是八叉树的根节点。在 SPC 的实现中，根节点通常表示整个空间的起点，其坐标在整数坐标系中通常是 (0, 0, 0)。
+      // 父节点的坐标
       point_data p = points[pidx];            
 
       uint base_idx = prefix_sum[tidx];
 
-      // 每个字节用8位二进制表示一个节点的子节点存在情况（0表示不存在，1表示存在）。
+      // **********************************
+      // 该父节点字节对应的子节点情况 "o" 。
       uint8_t o = octree[pidx];       
-      // 获取当前节点的排他性前缀和，用于计算子节点的全局索引。
+      // 该父节点的全局索引 "s" 。
       uint s = exclusive_sum[pidx];
+      // **********************************
 
-      // 1 / 2^level，表示当前层级的节点半径大小。
+      // 该父节点所在层的网格半径大小 "1/2^level" 。
       float scale = 1.0 / ((float)(0x1 << level));
       float3 org = ray_o[ridx];
       
-      // 计算射线起点相对节点中心坐标的坐标。
+      // 计算射线起点相对父节点中心坐标的坐标。
       float x = (0.5f * org.x + 0.5f) - scale * ((float)p.x + 0.5);   // (0.5f * org.x + 0.5f) 将射线起点坐标从【-1,1】缩放到【0，1】
-      float y = (0.5f * org.y + 0.5f) - scale * ((float)p.y + 0.5);   // 实际 p.x 节点坐标是整数，+0.5 表示中心。
+      float y = (0.5f * org.y + 0.5f) - scale * ((float)p.y + 0.5);   // 当前父节点的中心坐标 "p+0.5" 。
       float z = (0.5f * org.z + 0.5f) - scale * ((float)p.z + 0.5);   // 乘以 scale 的目的值始终将每个层级的节点缩放到【0,1】之间。（因为随着level增加，节点整数坐标范围也增加）
 
       // 射线（ray）起点相对节点的方向会影响子节点的遍历顺序。
@@ -311,13 +308,17 @@ namespace kaolin
       {
         // VOXEL_ORDER 定义了根据射线方向遍历子节点的顺序。不同的射线方向会导致不同的子节点优先级。
         uint j = VOXEL_ORDER[code][i];    
-        // 检查当前层节点o的第j个子节点是否存在。
-        if (o & (0x1 << j))
+        
+        if (o & (0x1 << j)) // 检查当前层节点o的第j个子节点是否存在。
         {
-          // nuggets_out记录子节点中，（节点在全局的偏移量：对应的射线序号）
-          uint cnt = __popc(o & ((0x2 << j) - 1)); // count set bits up to child - inclusive sum
-          nuggets_out[base_idx].y = s + cnt;    // 子节点的全局序号。
-          nuggets_out[base_idx++].x = ridx;     // 对应的射线序号。
+          // ***************************************
+          // cnt: 子节点相对父节点的偏移量。
+          uint cnt = __popc(o & ((0x2 << j) - 1)); 
+          // 子节点的全局序号。
+          nuggets_out[base_idx].y = s + cnt;    
+          // 对应的射线序号。
+          nuggets_out[base_idx++].x = ridx;     
+          // ***************************************
         }
       }
     }
@@ -626,7 +627,6 @@ namespace kaolin
       at::Tensor info = at::empty({num + 1}, octree.options().dtype(at::kInt));
       uint *info_ptr = reinterpret_cast<uint *>(info.data_ptr<int>());    
 
-      // Do the proposals hit?
       if (l == target_level && return_depth)
       {
         depths0 = at::empty({num, depth_dim}, octree.options().dtype(at::kFloat));
@@ -649,7 +649,9 @@ namespace kaolin
       }
       else
       {
-        // info 数组中保存每个射线相交的节点的子节点数量。
+        // ******************************************************
+        // 统计： 返回 info 数组中保存每个射线相交的节点的子节点数量。
+        // ******************************************************
         decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
             num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
             info_ptr, octree_ptr, l, target_level - l);
@@ -676,11 +678,14 @@ namespace kaolin
       CubDebugExit(cub::DeviceScan::InclusiveSum(
           temp_storage_ptr, temp_storage_bytes, info_ptr,
           prefix_sum_ptr + 1, num)); // start sum on second element
-
+      
+      
+      // *********************************************
+      // 下一层节点候选节点数量
       // 得到所有射线在下一层节点的候选相交的总数量 cnt 。
+      // *********************************************
       cudaMemcpy(&cnt, prefix_sum_ptr + num, sizeof(uint), cudaMemcpyDeviceToHost);
-
-      // allocate local GPU storage
+      // 长度为当前层所有候选子节点的数量。
       nuggets1 = at::empty({cnt, 2}, octree.options().dtype(at::kInt));
 
       // miss everything
@@ -693,10 +698,11 @@ namespace kaolin
         break;
       }
 
-      // Subdivide if more levels remain, repeat
       if (l < target_level)
       {
-        // 实现将当前节点的下一层《所有》子节点的全局偏移序号和对应的射线保存在 nuggets1 中。
+        // *******************************************************************
+        // 将 「子节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets1 中。
+        // *******************************************************************
         subdivide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
             num, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()), reinterpret_cast<uint2 *>(nuggets1.data_ptr<int>()), ray_o_ptr, points_ptr,
             octree_ptr, exclusive_sum_ptr, info_ptr, prefix_sum_ptr, l);

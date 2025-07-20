@@ -55,13 +55,11 @@ static __inline__ __device__ float3 ray_flip(
 ) {
     // From Majercik et. al 2018
 
-    // Put the center of the AABB at the origin [0, 0, 0]
     // 将 AABB中心点作为坐标系原点。
     float3 o = make_float3(query.x-origin.x, query.y-origin.y, query.z-origin.z);
 
     // Maximum Component
     float cmax = fmaxf(fmaxf(fabs(o.x), fabs(o.y)), fabs(o.z));    
-
 
     // If the maximum component is smaller than the radius of the AABB, then the ray origin is
     // inside the AABB; return a negative to indicate.
@@ -72,12 +70,11 @@ static __inline__ __device__ float3 ray_flip(
     }
 
     // AABB矩形中心点作为坐标系原点。
-    // Compute distance to planes
     // winding * sgn.x：根据光线方向确定要检测的AABB平面（前平面或后平面）。
     float d0 = fmaf(winding, sgn.x, - o.x) * invdir.x;      // 射线起始点o距离射线到AABB矩形的最近yz平面交点的线段长度。
     float d1 = fmaf(winding, sgn.y, - o.y) * invdir.y;      // 射线起始点o距离射线到AABB矩形的最近xz平面交点的线段长度。
     float d2 = fmaf(winding, sgn.z, - o.z) * invdir.z;      // 射线起始点o距离射线到AABB矩形的最近xy平面交点的线段长度。
-    // 验证交点是否在AABB范围内。
+    // 射线在相交平面上的投影长度。
     float ltxy = fmaf(dir.y, d0, o.y);      // 射线在AABB的"YZ平面"方向的交点的y坐标：P_y = [ O + d0 * dir ]_y，射线在AABB表面的投影。
     float ltxz = fmaf(dir.z, d0, o.z);      // 射线在AABB的"YZ平面"方向的交点的z坐标：P_z = [ O + d0 * dir ]_z
     float ltyx = fmaf(dir.x, d1, o.x);
@@ -106,7 +103,7 @@ static __inline__ __device__ float3 ray_flip(
         return d;
     }
 
-    return 0.0; 
+    return 0.0;     // 射线与当前AABB没有交点。
     // returns: 
     //      d == 0 -> miss
     //      d >  0 -> distance
