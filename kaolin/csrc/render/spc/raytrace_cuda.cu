@@ -620,6 +620,7 @@ namespace kaolin
 
     // cnt 保存当前 nuggets0 节点中的下一层子节点的总数量。
     uint cnt, buffer = 0;
+    
     for (uint32_t l = 0; l <= target_level; l++)
     {
       
@@ -627,6 +628,7 @@ namespace kaolin
       at::Tensor info = at::empty({num + 1}, octree.options().dtype(at::kInt));
       uint *info_ptr = reinterpret_cast<uint *>(info.data_ptr<int>());    
 
+      /// ############################################### Step1: ###############################################
       if (l == target_level && return_depth)
       {
         depths0 = at::empty({num, depth_dim}, octree.options().dtype(at::kFloat));
@@ -657,6 +659,8 @@ namespace kaolin
             info_ptr, octree_ptr, l, target_level - l);
       }
 
+      /// ############################################### Step2: ###############################################
+
       // 创建数组，用于记录 info 数组中的前缀和。
       at::Tensor prefix_sum = at::empty({num + 1}, octree.options().dtype(at::kInt));
       uint *prefix_sum_ptr = reinterpret_cast<uint *>(prefix_sum.data_ptr<int>());
@@ -675,20 +679,15 @@ namespace kaolin
       temp_storage_ptr = (void *)temp_storage.data_ptr<uint8_t>();
       
       // 计算 info_ptr 数组的前缀和。
-      CubDebugExit(cub::DeviceScan::InclusiveSum(
-          temp_storage_ptr, temp_storage_bytes, info_ptr,
-          prefix_sum_ptr + 1, num)); // start sum on second element
-      
+      CubDebugExit(cub::DeviceScan::InclusiveSum(temp_storage_ptr,  temp_storage_bytes,  info_ptr,  prefix_sum_ptr + 1, num)); // start sum on second element
       
       // *********************************************
-      // 下一层节点候选节点数量
       // 得到所有射线在下一层节点的候选相交的总数量 cnt 。
       // *********************************************
       cudaMemcpy(&cnt, prefix_sum_ptr + num, sizeof(uint), cudaMemcpyDeviceToHost);
       // 长度为当前层所有候选子节点的数量。
       nuggets1 = at::empty({cnt, 2}, octree.options().dtype(at::kInt));
 
-      // miss everything
       if (cnt == 0)
       {
         num = 0;
@@ -698,6 +697,7 @@ namespace kaolin
         break;
       }
 
+      /// ############################################### Step3: #########################################################
       if (l < target_level)
       {
         // *******************************************************************
@@ -731,9 +731,10 @@ namespace kaolin
           }
         }
       }
-      //////////////////////////////////
+
+      //////////////////////////////////////
       // 准备计算下一层节点，重复以上步骤。
-      //////////////////////////////////
+      //////////////////////////////////////
       nuggets0 = nuggets1;
       num = cnt;
     }
