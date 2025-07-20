@@ -45,7 +45,7 @@ static __inline__ __device__ float3 ray_flip(
 
 // https://zhuanlan.zhihu.com/p/610258258
 // Device primitive for a single ray-AABB intersection
- static __inline__ __device__ float ray_aabb(
+ static __inline__ __device__ float ray_aabb(   // 计算射线起点距离与 AABB 相交点的距离。
     const float3 query,  // query point (or ray origin)
     const float3 dir,    // ray direction
     const float3 invdir, // ray inverse direction
@@ -78,12 +78,12 @@ static __inline__ __device__ float3 ray_flip(
     float d1 = fmaf(winding, sgn.y, - o.y) * invdir.y;      // 射线起始点o距离射线到AABB矩形的最近xz平面交点的线段长度。
     float d2 = fmaf(winding, sgn.z, - o.z) * invdir.z;      // 射线起始点o距离射线到AABB矩形的最近xy平面交点的线段长度。
     // 验证交点是否在AABB范围内。
-    float ltxy = fmaf(dir.y, d0, o.y);      // 射线在AABB的"YZ平面"方向的交点的y坐标：P_y = [ O + d0 * D ]_y
-    float ltxz = fmaf(dir.z, d0, o.z);      // 射线在AABB的"YZ平面"方向的交点的z坐标：P_z = [ O + d0 * D ]_z
+    float ltxy = fmaf(dir.y, d0, o.y);      // 射线在AABB的"YZ平面"方向的交点的y坐标：P_y = [ O + d0 * dir ]_y，射线在AABB表面的投影。
+    float ltxz = fmaf(dir.z, d0, o.z);      // 射线在AABB的"YZ平面"方向的交点的z坐标：P_z = [ O + d0 * dir ]_z
     float ltyx = fmaf(dir.x, d1, o.x);
     float ltyz = fmaf(dir.z, d1, o.z);
-    float ltzx = fmaf(dir.x, d2, o.x);      // 射线在AABB的"XY平面"方向的交点的x坐标：P_x = [ O + d2 * D ]_x
-    float ltzy = fmaf(dir.y, d2, o.y);      // 射线在AABB的"XY平面"方向的交点的y坐标：P_y = [ O + d2 * D ]_y
+    float ltzx = fmaf(dir.x, d2, o.x);      // 射线在AABB的"XY平面"方向的交点的x坐标：P_x = [ O + d2 * dir ]_x，射线在AABB表面的投影。
+    float ltzy = fmaf(dir.y, d2, o.y);      // 射线在AABB的"XY平面"方向的交点的y坐标：P_y = [ O + d2 * dir ]_y
 
     // Test hit against each plane
     bool test0 = (d0 >= 0.0f) && (fabs(ltxy) <= r) && (fabs(ltxz) <= r);
