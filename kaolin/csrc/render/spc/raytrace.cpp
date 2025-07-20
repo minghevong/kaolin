@@ -167,6 +167,7 @@ std::vector<at::Tensor> generate_primary_rays_cuda(
 #endif
 }
 
+//返回： 「根节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets 中。
 std::vector<at::Tensor> raytrace_cuda(
     at::Tensor octree,
     at::Tensor points,   // 从八叉树中生成的点云 kaolin::generate_points_cuda ，生成的点云是一个层次化的点云[N, 3]。其中根节点为[0,0,0].
