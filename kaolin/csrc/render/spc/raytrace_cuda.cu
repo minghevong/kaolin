@@ -581,6 +581,7 @@ namespace kaolin
     }
   }
 
+  //返回： 「根节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets 中。
   std::vector<at::Tensor> raytrace_cuda_impl(
       at::Tensor octree,           // torch.ByteTensor是 8 位无符号整数（uint8），标记体素是否被占用（0 表示空，1 表示占用）。
       // https://kaolin.readthedocs.io/en/stable/notes/spc_summary.html#spc-points
