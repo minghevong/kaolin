@@ -230,7 +230,8 @@ namespace kaolin
       // Compute aux info (precompute to optimize)
       float3 sgn = ray_sgn(d);
       float3 ray_inv = make_float3(1.0 / d.x, 1.0 / d.y, 1.0 / d.z);
-
+      
+      // 射线起点与根节点的穿入点距离 和 穿出点距离
       depth[tidx] = ray_aabb_with_exit(o, d, ray_inv, vc, r);
 
       // Perform AABB check
@@ -637,14 +638,14 @@ namespace kaolin
 
         if (with_exit)
         {
-          // 返回： 射线是否对应根节点 info[tidx] ， 射线起点到根节点的距离 depth[tidx] 。
+          // 返回： 射线是否对应根节点 info[tidx] ，是则为1，否则为0， 射线起点到根节点的穿入点和穿出点的距离 depth[tidx] 。
           decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
               num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
               reinterpret_cast<float2 *>(l == target_level ? depths0.data_ptr<float>() : 0), info_ptr, octree_ptr, l);
         }
         else
         {
-          // 返回： 射线是否对应根节点 info[tidx] ， 射线起点到根节点的距离 depth[tidx] 。
+          // 返回： 射线是否对应根节点 info[tidx] ， 射线起点到根节点的穿入点的距离 depth[tidx] 。
           decide_cuda_kernel<<<(num + RT_NUM_THREADS - 1) / RT_NUM_THREADS, RT_NUM_THREADS>>>(
               num, points_ptr, ray_o_ptr, ray_d_ptr, reinterpret_cast<uint2 *>(nuggets0.data_ptr<int>()),
               l == target_level ? depths0.data_ptr<float>() : 0, info_ptr, octree_ptr, l);
