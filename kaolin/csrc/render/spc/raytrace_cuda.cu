@@ -582,7 +582,7 @@ namespace kaolin
     }
   }
 
-  //返回： 「根节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets 中。
+  //返回： 「根节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets 中。以及射线起点到相交节点的穿入和穿出点的距离值。
   std::vector<at::Tensor> raytrace_cuda_impl(
       at::Tensor octree,           // torch.ByteTensor是 8 位无符号整数（uint8），标记体素是否被占用（0 表示空，1 表示占用）。
       // https://kaolin.readthedocs.io/en/stable/notes/spc_summary.html#spc-points
@@ -742,7 +742,7 @@ namespace kaolin
     }
 
     if (return_depth)
-    { //返回： 「根节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets 中。
+    { //返回： 「根节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets 中。以及射线起点到相交节点的穿入和穿出点的距离值。
       return {nuggets0.index({Slice(0, num)}).contiguous(),
               depths1.index({Slice(0, num)}).contiguous()};
     }

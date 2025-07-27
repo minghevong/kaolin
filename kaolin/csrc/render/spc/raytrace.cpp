@@ -211,7 +211,7 @@ std::vector<at::Tensor> raytrace_cuda(
               "SPC pyramid corrupt, check if the SPC pyramid has been sliced");
 
   // do cuda
-  //返回： 「根节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets 中。
+  //返回： 「根节点的全局序号」 和 「对应的射线序号」对 保存在新的 nuggets 中。以及射线起点到相交节点的穿入和穿出点的距离值。
   return raytrace_cuda_impl(octree, points, pyramid, exclusive_sum, ray_o, ray_d, 
                                 max_level, target_level, return_depth, with_exit);
 
